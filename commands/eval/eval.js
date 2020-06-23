@@ -1,7 +1,7 @@
 module.exports.name = "eval"
 
 
-module.exports.run = async (client, message, args) => {
+module.exports.run = async (client, message, args, database) => {
     const { inspect } = require('util')
     const { success, unsuccess, successWithInput } = require("./config.js").embeds
 
@@ -13,7 +13,7 @@ module.exports.run = async (client, message, args) => {
 
     try {
 
-        if (input.startsWith("```js")) input = input.slice(5, input.length - 3)
+        if (input.startsWith("```js") && input.endsWith("```")) input = input.slice(5, input.length - 3)
 
         let output = await eval(input)
 
@@ -49,3 +49,4 @@ module.exports.run = async (client, message, args) => {
     }
 
 }
+

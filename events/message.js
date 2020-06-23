@@ -1,3 +1,5 @@
+const { messages } = require("@fagnersales/cm-js")
+
 module.exports.name = "message"
 
 module.exports.run = (client, database, message) => {
@@ -12,6 +14,7 @@ module.exports.run = (client, database, message) => {
     else return;
 
     command.run(client, message, args, database, {
-        defaultParams: [command.name, message.author, message.guild]
+        defaultParams: [command.name, message.author, message.guild],
+        send: messages.discordSender(message.channel)
     })   
 }

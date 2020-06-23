@@ -1,3 +1,12 @@
 {
-    "ping/pong": "Pong 🏓"
+    "ping/pong": "Pong 🏓",
+    "gallery/channel/NotFound": "😢 Não há um canal para galeria no momento!",
+    "gallery/channel/ProvideNewChannel": "😜 Você precisa mencionar ou inserir o ID do novo canal!",
+    "gallery/channel/Found": "😁 O canal para galeria está setado em: %1",
+    "gallery/channel/NewChannelNotFound": "🤔 Não pude encontrar o novo canal, tente mencioná-lo ou inserir o ID!",
+    "gallery/channel/AlreadySaved": "😂 Este canal já está setado para galeria!",
+    "gallery/channel/SuccessfullyEdited": "🤲 Parabéns você editou o canal de galeria para: %1", 
+    "gallery/channel/RemoveChannelButNull": "😜 Não há um canal para galeria!",
+    "gallery/channel/Removed": "😢 O canal de galeria foi removido com sucesso!",
+    "gallery/channel/SuccessfullySaved": "🤲 Parabéns você salvou o canal para galeria em: %1" 
 }
