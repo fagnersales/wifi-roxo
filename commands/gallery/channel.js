@@ -18,6 +18,6 @@ module.exports.run = async (client, message, args, database, { send }) => {
 
     if (["remove", "remover"].includes(args[0].toLowerCase())) return removeChannel()
 
-    if (["set", "setar", "add", "adicionar"].includes(args[0].toLowerCase())) return saveChannel()
+    if (["set", "setar", "add", "adicionar"].includes(args[0].toLowerCase())) return saveChannel(message, args)
 
 }

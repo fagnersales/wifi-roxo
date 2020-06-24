@@ -3,6 +3,13 @@ const configurateChannel = async (ref, send) => {
     const channelID = (await ref.once("value")).val()
 
     return {
+        removeChannel() {
+            if (channelID == null) return send(messageKey + "/RemoveChannelButNull")
+
+            ref.set(null)
+
+            return send(messageKey + "/Removed")
+        },
         checkChannel(message) {
             const channel = message.guild.channels.cache.get(channelID)
     
@@ -20,13 +27,6 @@ const configurateChannel = async (ref, send) => {
             ref.set(newChannel.id)
     
             return send(messageKey + "/SuccessfullyEdited", String(newChannel))
-        },
-        removeChannel() {
-            if (channelID == null) return send(messageKey + "/RemoveChannelButNull")
-
-            ref.set(null)
-
-            return send(messageKey + "/Removed")
         },
         saveChannel(message, args) {
             if (!args[1]) return send(messageKey + "/ProvideNewChannel")

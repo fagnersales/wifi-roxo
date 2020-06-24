@@ -8,5 +8,7 @@
     "gallery/channel/SuccessfullyEdited": "🤲 Parabéns você editou o canal de galeria para: %1", 
     "gallery/channel/RemoveChannelButNull": "😜 Não há um canal para galeria!",
     "gallery/channel/Removed": "😢 O canal de galeria foi removido com sucesso!",
-    "gallery/channel/SuccessfullySaved": "🤲 Parabéns você salvou o canal para galeria em: %1" 
+    "gallery/channel/SuccessfullySaved": "🤲 Parabéns você salvou o canal para galeria em: %1",
+
+    "methods/configurateChannel/": ""
 }
