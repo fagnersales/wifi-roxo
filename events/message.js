@@ -6,15 +6,23 @@ module.exports.run = (client, database, message) => {
 
     const guildPrefix = process.env.PREFIX
 
-    let command;
     let args = message.content.split(" ").slice(1);
-    let commandName = message.content.split(" ")[0].slice(guildPrefix.length).toLowerCase();
 
-    if (client.commands.has(commandName)) command = client.commands.get(commandName);
-    else return;
+    const mentions = [`<@!${client.user.id}>`, `<@${client.user.id}>`]
 
-    command.run(client, message, args, database, {
-        defaultParams: [command.name, message.author, message.guild],
-        send: messages.discordSender(message.channel)
-    })   
+    const startsWithMentionMe = message.content.startsWith(mentions[0]) || message.content.startsWith(mentions[1])
+
+    const commandName = startsWithMentionMe ? "mention-me" : message.content.split(" ")[0].slice(guildPrefix.length).toLowerCase();
+    
+    const command = client.commands.has(commandName) || client.aliases.has(commandName)
+
+    if (command) {
+        const commandToRun = client.commands.get(commandName) || client.commands.get(client.aliases.get(commandName))
+
+        commandToRun.run(client, message, args, database, {
+            defaultParams: [command.name, message.author, message.guild],
+            send: messages.discordSender(message.channel)
+        })   
+    }
+
 }

@@ -1,4 +1,11 @@
-module.exports.name = "gallerychannel"
+module.exports = {
+    name: "gchannel",
+    aliases: ['gcanal'],
+    help: {
+        simpleDesc: `Configurar/Ver canal de galeria`,
+        fullDesc: `Visualize o canal para galeria xD`
+    }
+}
 
 const configurateChannel = require('../../methods/configurateChannel')
 

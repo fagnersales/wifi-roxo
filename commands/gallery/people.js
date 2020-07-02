@@ -1,6 +1,16 @@
 const { MessageEmbed } = require("discord.js")
+const { once } = require('events')
 
-module.exports.name = "gallery"
+const moment = require('moment')
+moment.locale('pt-br')
+
+module.exports = {
+    name: "gallery",
+    aliases: ['galeria', 'g'],
+    help: {
+        simpleDesc: `Veja sua galeria ou mencione alguém para ver a dela`
+    }
+}
 
 module.exports.run = async (client, message, args, database) => {
 
@@ -8,9 +18,9 @@ module.exports.run = async (client, message, args, database) => {
 
     const galleryPostsRef = database.ref("gallery/posts")
 
-    const getGalleryPosts = async (member) => 
-    member ? (await galleryPostsRef.once("value")).val().filter(x => x.author == member.id) : 
-    (await galleryPostsRef.once("value")).val()
+    const getGalleryPosts = async (member) =>
+        member ? (await galleryPostsRef.once("value")).val().filter(x => x.author == member.id) :
+            (await galleryPostsRef.once("value")).val()
 
     const galleryPosts = await getGalleryPosts()
 
@@ -20,13 +30,53 @@ module.exports.run = async (client, message, args, database) => {
 
     if (memberGallery.length == 0) return message.channel.send(`${member} não tem uma galeria ainda ;(`)
 
-    visualizeGallery()
 
-    async function visualizeGallery(page = 0) {
+    sortWay()
 
-        console.log(page)
+    async function sortWay() {
+        const emojis = {
+            '👍': 'likes',
+            '✨': 'recent',
+            '👻': 'old'
+        }
 
-        const gallery = await getGalleryPosts(message.member)
+        const text = Object.keys(emojis).map(emoji => `${emoji} - ${emojis[emoji]}`).join('\n')
+
+        const msg = await message.channel.send(`Escolha como você quer ordenar:\n${text}`)
+
+        const filter = (r, u) => r.me && u.id === message.author.id
+
+        const options = { time: 15000, max: 1 }
+
+        for (const emoji of Object.keys(emojis)) await msg.react(emoji)
+
+        const collector = msg.createReactionCollector(filter, options)
+
+        const [collected, reason] = await once(collector, 'end')
+
+        if (reason == "limit") {
+            msg.delete()
+            visualizeGallery(emojis[collected.first().emoji.name])
+        }
+
+    }
+
+    async function visualizeGallery(type, page = 0, messageUsed) {
+
+        let sort, text 
+
+        if (type == "recent") {
+            text = 'Filtrando pelas mais recentes'
+            sort = (a, b) => b.postedAt - a.postedAt
+        } else if (type == "old") {
+            text ='Filtrando pelas mais antigas'
+            sort = (a, b) => a.postedAt - b.postedAt
+        }  else if (type == "likes") {
+            text = 'Filtrando pelas mais curtidas'
+            sort = (a, b) => b.likes - a.likes
+        }
+
+        const gallery = (await getGalleryPosts(member)).sort(sort)
 
         const buttons = ["👍", "◀", "▶"]
 
@@ -34,7 +84,7 @@ module.exports.run = async (client, message, args, database) => {
             if (button === buttons[1]) {
                 if (page == 0) return gallery.length - 1
                 else return page - 1
-            } else if (button === buttons[2]){
+            } else if (button === buttons[2]) {
                 if (page == gallery.length - 1) return 0
                 else return page + 1
             }
@@ -44,12 +94,12 @@ module.exports.run = async (client, message, args, database) => {
 
         const embed = new MessageEmbed()
             .setImage(nowImage.url)
-            .setDescription(`(${page+1}/${gallery.length})`)
+            .setDescription(`(${page + 1}/${gallery.length}) | ${text}`)
             .setTitle(nowImage.comment)
-            .setColor('RANDOM')
-            .setFooter(`👍 ${nowImage.likes}`)
+            .setColor('#ff80c8')
+            .setFooter(`👍 ${nowImage.likes} | Postada ${moment(nowImage.postedAt).fromNow()}`)
 
-        const msg = await message.channel.send(embed)
+        const msg = messageUsed || await message.channel.send(embed)
 
         for (const button of buttons) await msg.react(button)
 
@@ -58,31 +108,31 @@ module.exports.run = async (client, message, args, database) => {
         const filter = (r, u) => buttons.slice(1).includes(r.emoji.name) && u.id === message.author.id
 
         msg.createReactionCollector(filter, { time: 60000, max: 1 })
-        .on("collect", reaction => visualizeGallery(pageByButton(reaction.emoji.name)))
+            .on("collect", reaction => visualizeGallery(type, pageByButton(reaction.emoji.name)))
 
-        .on("end", (a, reason) => {
-            if (reason == "limit" || reason == "time") msg.delete()
-        })
+            .on("end", (a, reason) => {
+                if (reason == "limit" || reason == "time") msg.delete()
+            })
     }
 
     function likeImage(imageID, msg) {
         msg.createReactionCollector(reaction => reaction.emoji.name == "👍", { time: 60000, })
-        .on("collect", async (reaction, user) => {
+            .on("collect", async (reaction, user) => {
 
-            const image = (await getGalleryPosts(member)).find(x => x.id == imageID)
+                const image = (await getGalleryPosts(member)).find(x => x.id == imageID)
 
-            image.likedBy = image.likedBy || []
+                image.likedBy = image.likedBy || []
 
-            if (image.likedBy.includes(user.id)) return reaction.users.remove(user.id)
+                if (image.likedBy.includes(user.id)) return reaction.users.remove(user.id)
 
-            image.likedBy.push(user.id)
-            image.likes = image.likedBy.length
+                image.likedBy.push(user.id)
+                image.likes = image.likedBy.length
 
-            const updateGallery = memberGallery.map(img => img.id === image.id ? image : img)
+                const updateGallery = memberGallery.map(img => img.id === image.id ? image : img)
 
-            galleryPostsRef.set(updateGallery)
+                galleryPostsRef.set(updateGallery)
 
-            msg.edit(new MessageEmbed(msg.embeds[0]).setFooter(`👍 ${image.likes}`))
-        })
+                msg.edit(new MessageEmbed(msg.embeds[0]).setFooter(`👍 ${image.likes} | Postada ${moment(image.postedAt).fromNow()}`))
+            })
     }
 }

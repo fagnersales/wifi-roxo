@@ -20,7 +20,7 @@ const commandHandler = (client, path = join(__dirname, "..", "discord", "command
         if (command && command.name) {
             console.log(`[COMMANDS] => Arquivo sendo carregado ${filePath} `)
             client.commands.set(command.name, command)
-            if (command.aliases) for (const alias of command.aliases) client.commands.set(alias, command)
+            if (command.aliases) for (const alias of command.aliases) client.aliases.set(alias, command.name)
         }
     }
 
