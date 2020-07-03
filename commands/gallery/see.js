@@ -12,15 +12,23 @@ module.exports = {
     }
 }
 
-module.exports.run = async(client, message, args, database) => {
+const generateEmbed = opts => new MessageEmbed()
+    .setImage(opts.image.url)
+    .setDescription(`(${opts.page + 1}/${opts.galleryLength}) | ${opts.text}`)
+    .setTitle(opts.image.comment)
+    .setColor('#ff80c8')
+    .setFooter(`❤ ${opts.image.loves} | Postada ${moment(opts.image.postedAt).fromNow()}`)
+
+
+module.exports.run = async (client, message, args, database) => {
 
     const member = message.mentions.members.first() || message.member
 
     const galleryPostsRef = database.ref("gallery/posts")
 
-    const getGalleryPosts = async(member) =>
+    const getGalleryPosts = async (member) =>
         member ? (await galleryPostsRef.once("value")).val().filter(x => x.author == member.id) :
-        (await galleryPostsRef.once("value")).val()
+            (await galleryPostsRef.once("value")).val()
 
     const galleryPosts = await getGalleryPosts()
 
@@ -61,20 +69,15 @@ module.exports.run = async(client, message, args, database) => {
 
     }
 
-    async function visualizeGallery(type, page = 0, messageUsed) {
+    async function visualizeGallery(type, page = 0, messageUsed = null) {
 
-        let sort, text
-
-        if (type == "recent") {
-            text = 'Filtrando pelas mais recentes'
-            sort = (a, b) => b.postedAt - a.postedAt
-        } else if (type == "old") {
-            text = 'Filtrando pelas mais antigas'
-            sort = (a, b) => a.postedAt - b.postedAt
-        } else if (type == "loves") {
-            text = 'Filtrando pelas mais curtidas'
-            sort = (a, b) => b.loves - a.loves
+        const getTextAndSort = type => {
+            if (type == "loves") return ["Filtrando por mais amada", (a, b) => b.loves - a.loves]
+            else if (type == "recent") return ["Filtrando por mais recente", (a, b) => b.postedAt - a.postedAt]
+            else return ["Filtrando por mais antiga", (a, b) => a.postedAt - b.postedAt]
         }
+
+        const [text, sort] = getTextAndSort(type)
 
         const gallery = (await getGalleryPosts(member)).sort(sort)
 
@@ -92,32 +95,46 @@ module.exports.run = async(client, message, args, database) => {
 
         const nowImage = gallery[page]
 
-        const embed = new MessageEmbed()
-            .setImage(nowImage.url)
-            .setDescription(`(${page + 1}/${gallery.length}) | ${text}`)
-            .setTitle(nowImage.comment)
-            .setColor('#ff80c8')
-            .setFooter(`❤ ${nowImage.loves} | Postada ${moment(nowImage.postedAt).fromNow()}`)
+        const generateEmbedOptions = {
+            image: nowImage,
+            galleryLength: gallery.length,
+            text, page
+        }
 
-        const msg = messageUsed || await message.channel.send(embed)
 
-        for (const button of buttons) await msg.react(button)
+        const msg = messageUsed || await message.channel.send(generateEmbed(generateEmbedOptions))
+
+        for (const reaction of msg.reactions.cache.array()) {
+            if (!buttons.includes(reaction.emoji.name)) reaction.remove()
+            else {
+                reaction.users.cache
+                    .filter(user => user.id !== client.user.id)
+                    .forEach(user => reaction.users.remove(user.id))
+            }
+        }
+
+        for (const button of buttons) {
+            if (!msg.reactions.cache.find(r => r.emoji.name == button)) await msg.react(button) 
+        }
 
         loveImage(nowImage.id, msg)
 
         const filter = (r, u) => buttons.slice(1).includes(r.emoji.name) && u.id === message.author.id
 
         msg.createReactionCollector(filter, { time: 60000, max: 1 })
-            .on("collect", reaction => visualizeGallery(type, pageByButton(reaction.emoji.name)))
-
-        .on("end", (a, reason) => {
-            if (reason == "limit" || reason == "time") msg.delete()
-        })
+            .on("collect", async reaction => {
+                const newPage = pageByButton(reaction.emoji.name)
+                msg.edit(generateEmbed({ ...generateEmbedOptions, image: gallery[newPage], page: newPage }))
+                visualizeGallery(type, newPage, msg)
+            })
     }
 
     function loveImage(imageID, msg) {
-        msg.createReactionCollector(reaction => reaction.emoji.name == "❤", { time: 60000 })
-            .on("collect", async(reaction, user) => {
+
+        const filter = (reaction, user) => reaction.emoji.name == "❤" && user.id !== client.user.id
+
+        msg.createReactionCollector(filter, { time: 60000 })
+            .on("collect", async (reaction, user) => {
 
                 const image = (await getGalleryPosts(member)).find(x => x.id == imageID)
 
