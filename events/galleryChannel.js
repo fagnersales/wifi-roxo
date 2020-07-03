@@ -3,30 +3,30 @@ const { ReactionEmoji } = require('discord.js')
 
 module.exports.name = "message"
 
-module.exports.run = async (client, database, message) => {
-   
+module.exports.run = async(client, database, message) => {
+
     const refForChannel = "gallery/channel"
 
     const channelID = (await database.ref(refForChannel).once("value")).val()
 
     const validInput = message.channel.id == channelID && message.attachments.first()
 
-    
+
     const emojis = ["📝", "✨"]
-    
-    const saveOnDatabase = async (comment = "") => {
+
+    const saveOnDatabase = async(comment = "") => {
         const galleryPostsRef = database.ref("gallery/posts")
-        
+
         const galleryPosts = (await galleryPostsRef.once("value")).val() || []
-        
+
         const newPost = {
             author: message.author.id,
             postedAt: message.createdTimestamp,
             url: message.attachments.first().url,
             comment: comment,
             id: generateID(28, message.author.id),
-            likes: 0,
-            likedBy: []
+            loves: 0,
+            lovedBy: []
         }
 
         galleryPostsRef.set([...galleryPosts, newPost])
@@ -40,16 +40,16 @@ module.exports.run = async (client, database, message) => {
         for (const emoji of emojis) await message.react(emoji)
 
         const msg = await message.channel.send(`${message.member}
-        Reaja com 📝 para adicionar um comentário e salvar
-        ✨ para salvar sem um comentário!
+        📝 Para adicionar um comentário e salvar
+        ✨ Para salvar sem um comentário!
         Ignore para cancelar`)
 
-        const commentAndSave = async () => {
+        const commentAndSave = async() => {
             await msg.edit(`${message.member} Envie o comentário a ser adicionado! (Máximo de 256 caracteres!)`)
 
             const messageFilter = m => m.author.id === message.author.id && m.content.length <= 256
 
-            const collect = async (collected) => {
+            const collect = async(collected) => {
                 await msg.edit(`${message.member} Sua foto foi salva com sucesso!`)
                 message.reactions.cache.filter(r => r.me).forEach(reaction => reaction.remove())
                 msg.delete({ timeout: 7000 })
@@ -67,13 +67,13 @@ module.exports.run = async (client, database, message) => {
                 if (reaction.emoji.name == emojis[0]) return commentAndSave()
 
                 message.reactions.cache.filter(r => r.me).forEach(reaction => reaction.remove())
-                msg.delete().catch(() => { })
+                msg.delete().catch(() => {})
                 saveOnDatabase()
             })
             .on("end", (data, reason) => {
                 if (reason == "time") {
                     message.reactions.cache.filter(r => r.me).forEach(reaction => reaction.remove())
-                    msg.delete().catch(() => { })
+                    msg.delete().catch(() => {})
                 }
             })
 

@@ -12,15 +12,15 @@ module.exports = {
     }
 }
 
-module.exports.run = async (client, message, args, database) => {
+module.exports.run = async(client, message, args, database) => {
 
     const member = message.mentions.members.first() || message.member
 
     const galleryPostsRef = database.ref("gallery/posts")
 
-    const getGalleryPosts = async (member) =>
+    const getGalleryPosts = async(member) =>
         member ? (await galleryPostsRef.once("value")).val().filter(x => x.author == member.id) :
-            (await galleryPostsRef.once("value")).val()
+        (await galleryPostsRef.once("value")).val()
 
     const galleryPosts = await getGalleryPosts()
 
@@ -35,7 +35,7 @@ module.exports.run = async (client, message, args, database) => {
 
     async function sortWay() {
         const emojis = {
-            '👍': 'likes',
+            '❤': 'loves',
             '✨': 'recent',
             '👻': 'old'
         }
@@ -63,22 +63,22 @@ module.exports.run = async (client, message, args, database) => {
 
     async function visualizeGallery(type, page = 0, messageUsed) {
 
-        let sort, text 
+        let sort, text
 
         if (type == "recent") {
             text = 'Filtrando pelas mais recentes'
             sort = (a, b) => b.postedAt - a.postedAt
         } else if (type == "old") {
-            text ='Filtrando pelas mais antigas'
+            text = 'Filtrando pelas mais antigas'
             sort = (a, b) => a.postedAt - b.postedAt
-        }  else if (type == "likes") {
+        } else if (type == "loves") {
             text = 'Filtrando pelas mais curtidas'
-            sort = (a, b) => b.likes - a.likes
+            sort = (a, b) => b.loves - a.loves
         }
 
         const gallery = (await getGalleryPosts(member)).sort(sort)
 
-        const buttons = ["👍", "◀", "▶"]
+        const buttons = ["❤", "◀", "▶"]
 
         const pageByButton = (button) => {
             if (button === buttons[1]) {
@@ -97,42 +97,42 @@ module.exports.run = async (client, message, args, database) => {
             .setDescription(`(${page + 1}/${gallery.length}) | ${text}`)
             .setTitle(nowImage.comment)
             .setColor('#ff80c8')
-            .setFooter(`👍 ${nowImage.likes} | Postada ${moment(nowImage.postedAt).fromNow()}`)
+            .setFooter(`❤ ${nowImage.loves} | Postada ${moment(nowImage.postedAt).fromNow()}`)
 
         const msg = messageUsed || await message.channel.send(embed)
 
         for (const button of buttons) await msg.react(button)
 
-        likeImage(nowImage.id, msg)
+        loveImage(nowImage.id, msg)
 
         const filter = (r, u) => buttons.slice(1).includes(r.emoji.name) && u.id === message.author.id
 
         msg.createReactionCollector(filter, { time: 60000, max: 1 })
             .on("collect", reaction => visualizeGallery(type, pageByButton(reaction.emoji.name)))
 
-            .on("end", (a, reason) => {
-                if (reason == "limit" || reason == "time") msg.delete()
-            })
+        .on("end", (a, reason) => {
+            if (reason == "limit" || reason == "time") msg.delete()
+        })
     }
 
-    function likeImage(imageID, msg) {
-        msg.createReactionCollector(reaction => reaction.emoji.name == "👍", { time: 60000, })
-            .on("collect", async (reaction, user) => {
+    function loveImage(imageID, msg) {
+        msg.createReactionCollector(reaction => reaction.emoji.name == "❤", { time: 60000 })
+            .on("collect", async(reaction, user) => {
 
                 const image = (await getGalleryPosts(member)).find(x => x.id == imageID)
 
-                image.likedBy = image.likedBy || []
+                image.lovedBy = image.lovedBy || []
 
-                if (image.likedBy.includes(user.id)) return reaction.users.remove(user.id)
+                if (image.lovedBy.includes(user.id)) return reaction.users.remove(user.id)
 
-                image.likedBy.push(user.id)
-                image.likes = image.likedBy.length
+                image.lovedBy.push(user.id)
+                image.loves = image.lovedBy.length
 
                 const updateGallery = memberGallery.map(img => img.id === image.id ? image : img)
 
                 galleryPostsRef.set(updateGallery)
 
-                msg.edit(new MessageEmbed(msg.embeds[0]).setFooter(`👍 ${image.likes} | Postada ${moment(image.postedAt).fromNow()}`))
+                msg.edit(new MessageEmbed(msg.embeds[0]).setFooter(`❤ ${image.loves} | Postada ${moment(image.postedAt).fromNow()}`))
             })
     }
 }
